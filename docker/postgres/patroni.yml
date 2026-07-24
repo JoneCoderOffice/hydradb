@@ -1,0 +1,51 @@
+scope: hydra_cluster
+namespace: /service
+
+etcd3:
+  hosts:
+    - etcd:2379
+
+restapi:
+  listen: 0.0.0.0:8008
+  connect_address: localhost:8008
+
+bootstrap:
+  dcs:
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        max_connections: 100
+        wal_level: replica
+        max_wal_senders: 10
+        max_replication_slots: 10
+        hot_standby: "on"
+        hot_standby_feedback: "on"
+      pg_hba:
+        - host replication replica_user 0.0.0.0/0 md5
+        - host all all 0.0.0.0/0 md5
+        - local all all trust
+  init:
+    post_bootstrap: /usr/local/bin/post_bootstrap.sh
+
+postgresql:
+  listen: 0.0.0.0:5432
+  connect_address: localhost:5432
+  data_dir: /var/lib/postgresql/data
+  bin_dir: /usr/local/bin
+  pgpass: /var/lib/postgresql/.pgpass
+  authentication:
+    replication:
+      username: replica_user
+      password: replica_pwd
+    superuser:
+      username: postgres
+      password: postgres_admin_pwd
+  pg_hba:
+    - host replication replica_user 0.0.0.0/0 md5
+    - host all all 0.0.0.0/0 md5
+    - local all all trust

@@ -1,8 +1,32 @@
 services:
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.0
+    container_name: etcd
+    command:
+      - etcd
+      - --name=etcd
+      - --advertise-client-urls=http://etcd:2379
+      - --listen-client-urls=http://0.0.0.0:2379
+      - --initial-advertise-peer-urls=http://etcd:2380
+      - --listen-peer-urls=http://0.0.0.0:2380
+      - --initial-cluster=etcd=http://etcd:2380
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hydra_net
+
   pg_primary:
-    image: postgres:16-alpine
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile.patroni
     container_name: pg_primary
     environment:
+      PATRONI_NAME: pg_primary
+      PATRONI_RESTAPI_CONNECT_ADDRESS: pg_primary:8008
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: pg_primary:5432
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -12,35 +36,45 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pg_primary_data:/var/lib/postgresql/data
-      - ./docker/postgres/pg-replication-setup.sh:/docker-entrypoint-initdb.d/pg-replication-setup.sh:ro
+      - ./docker/postgres/patroni.yml:/etc/patroni/patroni.yml:ro
+    depends_on:
+      etcd:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
     networks:
       - hydra_net
 
   pg_replica:
-    image: postgres:16-alpine
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile.patroni
     environment:
-      PGDATA: /var/lib/postgresql/data
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       REPLICATION_USER: ${REPLICATION_USER}
       REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
     volumes:
       - /var/lib/postgresql/data
-      - ./docker/postgres/pg-replica-entrypoint.sh:/usr/local/bin/pg-replica-entrypoint.sh:ro
-    entrypoint: ["/bin/sh", "/usr/local/bin/pg-replica-entrypoint.sh"]
-    command: ["postgres"]
+      - ./docker/postgres/patroni.yml:/etc/patroni/patroni.yml:ro
     depends_on:
+      etcd:
+        condition: service_healthy
       pg_primary:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
     networks:
       - hydra_net
 

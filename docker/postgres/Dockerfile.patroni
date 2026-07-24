@@ -1,0 +1,28 @@
+FROM postgres:16-alpine
+
+# Install Python and Patroni requirements
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    py3-yaml \
+    py3-requests \
+    py3-psycopg2 \
+    su-exec
+
+# Install Patroni with etcd support
+RUN pip3 install patroni[etcd] --break-system-packages
+
+# Copy post_bootstrap.sh script and make it executable
+COPY post_bootstrap.sh /usr/local/bin/post_bootstrap.sh
+RUN chmod +x /usr/local/bin/post_bootstrap.sh
+
+# Copy entrypoint.sh script and make it executable
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Setup configuration directories
+RUN mkdir -p /etc/patroni && chown -R postgres:postgres /etc/patroni
+
+EXPOSE 8008 5432
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
