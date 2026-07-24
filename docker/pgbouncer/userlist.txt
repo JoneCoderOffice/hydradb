@@ -1,0 +1,2 @@
+"postgres" "postgres_admin_pwd"
+"hydra_user" "hydra_pwd"

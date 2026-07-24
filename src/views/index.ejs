@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HydraDB - Database Horizontal Scaling Dashboard</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['Fira Code', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent 40%),
+                  radial-gradient(circle at bottom left, rgba(6, 182, 212, 0.15), transparent 40%),
+                  #0f172a;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-100 flex flex-col justify-between selection:bg-cyan-500/30 selection:text-cyan-200">
+
+  <!-- Header / Navigation -->
+  <header class="border-b border-slate-800/80 backdrop-blur-md sticky top-0 z-50 bg-slate-950/70">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3V7c0-2-1.5-3-3.5-3h-9C5.5 4 4 5 4 7zm0 5h16M4 15h16M4 9h16"></path>
+          </svg>
+        </div>
+        <div>
+          <span class="font-extrabold text-xl tracking-tight bg-gradient-to-r from-cyan-400 to-indigo-400 text-transparent bg-clip-text">HydraDB</span>
+          <span class="text-xs block text-slate-400 font-mono">Horizontal Scaling Cluster</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="/docs" target="_blank" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/50 hover:border-slate-600 transition-all font-medium text-sm text-slate-200 shadow-sm">
+          <svg class="h-4.5 w-4.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+          </svg>
+          Interactive Swagger Docs
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-6 py-10 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+    
+    <!-- Left Column: Interactive Dashboard & Operations (7 cols) -->
+    <div class="lg:col-span-7 flex flex-col gap-8">
+      
+      <!-- Intro Section -->
+      <section>
+        <h1 class="text-4xl md:text-5xl font-black tracking-tight leading-none mb-3">
+          PostgreSQL <span class="bg-gradient-to-r from-cyan-400 via-teal-400 to-indigo-400 text-transparent bg-clip-text">Horizontal Scaling</span> Cluster
+        </h1>
+        <p class="text-slate-400 leading-relaxed text-sm md:text-base max-w-2xl">
+          A fully dockerized environment simulating enterprise read/write database segregation. TypeORM dynamically routes queries via HAProxy and isolated connection poolers (PgBouncer) to the correct PostgreSQL server.
+        </p>
+      </section>
+
+      <!-- Connection Diagnostic Terminal -->
+      <section class="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 backdrop-blur-md shadow-2xl relative overflow-hidden">
+        <div class="absolute top-0 right-0 h-32 w-32 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="h-3.5 w-3.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <h2 class="font-bold text-lg">Cluster Status & Connection Routing</h2>
+          </div>
+          <button onclick="refreshDiagnostics()" class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono transition-all">
+            Execute Diagnostic Refresh
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Primary Node Status -->
+          <div class="bg-slate-950/80 rounded-xl p-4 border border-slate-800/50 font-mono text-xs">
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-indigo-400 font-bold">MASTER NODE (Write)</span>
+              <span class="px-2 py-0.5 rounded text-[10px] bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">Read/Write</span>
+            </div>
+            <div class="space-y-1.5 text-slate-300" id="primary-details">
+              <div><span class="text-slate-500">Instance Host:</span> <span class="loading text-slate-400">Loading...</span></div>
+              <div><span class="text-slate-500">Exposed IP:</span> <span class="loading text-slate-400">Loading...</span></div>
+              <div><span class="text-slate-500">Logical Port:</span> <span class="loading text-slate-400">Loading...</span></div>
+              <div><span class="text-slate-500">Replica Mode:</span> <span class="loading text-slate-400">Loading...</span></div>
+            </div>
+          </div>
+
+          <!-- Replica Node Status -->
+          <div class="bg-slate-950/80 rounded-xl p-4 border border-slate-800/50 font-mono text-xs">
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-cyan-400 font-bold">REPLICA NODE (Read)</span>
+              <span class="px-2 py-0.5 rounded text-[10px] bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/30">Read-Only</span>
+            </div>
+            <div class="space-y-1.5 text-slate-300" id="replica-details">
+              <div><span class="text-slate-500">Instance Host:</span> <span class="loading text-slate-400">Loading...</span></div>
+              <div><span class="text-slate-500">Exposed IP:</span> <span class="loading text-slate-400">Loading...</span></div>
+              <div><span class="text-slate-500">Logical Port:</span> <span class="loading text-slate-400">Loading...</span></div>
+              <div><span class="text-slate-500">Replica Mode:</span> <span class="loading text-slate-400">Loading...</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Active API Playgrounds -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Write Operation (POST) -->
+        <section class="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 backdrop-blur-md shadow-lg flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="px-2 py-1 text-xs font-bold rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 font-mono">POST</span>
+              <span class="text-xs text-slate-500 font-mono">/users</span>
+            </div>
+            <h3 class="font-bold text-base mb-2">Create New User</h3>
+            <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+              Triggers a database write. Routed to the **Primary** instance via port **5432**.
+            </p>
+            <form id="create-user-form" class="space-y-3">
+              <div>
+                <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">User Name</label>
+                <input type="text" id="user-name" placeholder="John Doe" required class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50">
+              </div>
+              <div>
+                <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Email Address</label>
+                <input type="email" id="user-email" placeholder="john@example.com" required class="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500/50">
+              </div>
+              <button type="submit" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-semibold text-sm hover:from-cyan-600 hover:to-indigo-600 shadow-md shadow-cyan-500/10 transition-all">
+                Save & Execute Write
+              </button>
+            </form>
+          </div>
+          <div id="create-user-result" class="mt-4 hidden p-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-[10px] text-emerald-400 overflow-x-auto"></div>
+        </section>
+
+        <!-- Read Operation (GET) -->
+        <section class="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 backdrop-blur-md shadow-lg flex flex-col justify-between">
+          <div class="w-full">
+            <div class="flex items-center justify-between mb-4">
+              <span class="px-2 py-1 text-xs font-bold rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/20 font-mono">GET</span>
+              <span class="text-xs text-slate-500 font-mono">/users</span>
+            </div>
+            <h3 class="font-bold text-base mb-2">Query User Records</h3>
+            <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+              Triggers a database query. Routed to the **Replica** instance via port **5433**.
+            </p>
+            <button onclick="fetchUsers()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/50 text-slate-200 font-semibold text-sm transition-all mb-4">
+              Fetch Users list
+            </button>
+          </div>
+          <div class="w-full">
+            <div id="users-list-container" class="max-h-[160px] overflow-y-auto space-y-2 pr-1 font-mono text-xs">
+              <div class="text-slate-500 italic text-center text-xs py-4">No users queried yet.</div>
+            </div>
+          </div>
+        </section>
+        
+      </div>
+      
+      <!-- API Endpoint Documentation Details -->
+      <section class="rounded-2xl border border-slate-800/80 bg-slate-900/30 p-6 backdrop-blur-md">
+        <h3 class="font-bold text-base mb-3 flex items-center gap-2">
+          <svg class="h-4.5 w-4.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Exposed REST API Spec
+        </h3>
+        <div class="space-y-3.5 text-xs text-slate-400 font-mono">
+          <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-950/40 border border-slate-900">
+            <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/20">POST</span>
+            <div class="flex-grow">
+              <div class="text-slate-200 font-semibold text-sm">/users</div>
+              <p class="text-[11px] mt-1 text-slate-400">Inserts user record. Auto-routed to Master (Primary).</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-950/40 border border-slate-900">
+            <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-500/20 text-blue-400 border border-blue-500/20">GET</span>
+            <div class="flex-grow">
+              <div class="text-slate-200 font-semibold text-sm">/users</div>
+              <p class="text-[11px] mt-1 text-slate-400">Fetches user array. Auto-routed to Slave (Replica).</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-950/40 border border-slate-900">
+            <span class="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-500/20 text-blue-400 border border-blue-500/20">GET</span>
+            <div class="flex-grow">
+              <div class="text-slate-200 font-semibold text-sm">/users/db-info</div>
+              <p class="text-[11px] mt-1 text-slate-400">Returns cluster details & routes diagnostics.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Right Column: Visual Architecture (5 cols) -->
+    <div class="lg:col-span-5 flex flex-col gap-6">
+      
+      <!-- Visual Architecture Diagram Card -->
+      <section class="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-6 backdrop-blur-md shadow-2xl flex flex-col h-full justify-between">
+        <div>
+          <h2 class="font-bold text-lg mb-1 flex items-center gap-2">
+            <svg class="h-5 w-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+            System Topology
+          </h2>
+          <p class="text-xs text-slate-400 mb-6 leading-relaxed">
+            The active database replication topography defined in <code>docker-compose.yml</code>.
+          </p>
+          <div class="rounded-xl border border-slate-800 bg-slate-950/40 p-4 flex items-center justify-center overflow-hidden min-h-[400px]">
+            <img id="diagram" src="/hydradb.drawio.svg" alt="HydraDB Scaled Architecture" class="max-w-full h-auto transition-transform hover:scale-105 duration-300">
+          </div>
+        </div>
+        
+        <div class="mt-6 border-t border-slate-800/60 pt-4 font-mono text-[11px] text-slate-400 leading-relaxed space-y-1.5">
+          <div class="flex justify-between"><span class="text-slate-500">Database Engine:</span> <span>PostgreSQL 16.14</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Routing proxy:</span> <span>HAProxy 2.8</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Connection pooler:</span> <span>PgBouncer 1.25</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Local docker network:</span> <span>hydra_net</span></div>
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-slate-950/90 py-6 text-center text-xs text-slate-500 font-mono">
+    <div class="max-w-7xl mx-auto px-6">
+      &copy; 2026 HydraDB Project. Designed for horizontal database scaling. Licensed under MIT.
+    </div>
+  </footer>
+
+  <!-- Scripts for client-side API interaction -->
+  <script>
+    // Refresh diagnostics on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      refreshDiagnostics();
+    });
+
+    async function refreshDiagnostics() {
+      // Set loaders
+      document.querySelectorAll('.loading').forEach(el => el.innerHTML = '<span class="text-slate-600 animate-pulse">querying...</span>');
+      
+      try {
+        const response = await fetch('/users/db-info');
+        if (!response.ok) throw new Error('API query failure');
+        const data = await response.json();
+        
+        // Populate Primary Status
+        document.getElementById('primary-details').innerHTML = `
+          <div><span class="text-slate-500">Instance Host:</span> <span class="text-indigo-400 font-semibold">\${data.writeConnection.description}</span></div>
+          <div><span class="text-slate-500">Exposed IP:</span> <span class="text-slate-200 font-mono">\${data.writeConnection.server_ip}</span></div>
+          <div><span class="text-slate-500">Logical Port:</span> <span class="text-slate-200 font-mono">\${data.writeConnection.port}</span></div>
+          <div><span class="text-slate-500">Replica Mode:</span> <span class="text-rose-400 font-semibold">false (Master Node)</span></div>
+        `;
+
+        // Populate Replica Status
+        document.getElementById('replica-details').innerHTML = `
+          <div><span class="text-slate-500">Instance Host:</span> <span class="text-cyan-400 font-semibold">\${data.readConnection.description}</span></div>
+          <div><span class="text-slate-500">Exposed IP:</span> <span class="text-slate-200 font-mono">\${data.readConnection.server_ip}</span></div>
+          <div><span class="text-slate-500">Logical Port:</span> <span class="text-slate-200 font-mono">\${data.readConnection.port}</span></div>
+          <div><span class="text-slate-500">Replica Mode:</span> <span class="text-emerald-400 font-semibold">true (Standby Mode)</span></div>
+        `;
+      } catch (err) {
+        console.error(err);
+        document.querySelectorAll('.loading').forEach(el => el.innerHTML = '<span class="text-rose-500 font-semibold">error</span>');
+      }
+    }
+
+    // Submit Create User Form
+    const createUserForm = document.getElementById('create-user-form');
+    createUserForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const name = document.getElementById('user-name').value;
+      const email = document.getElementById('user-email').value;
+      const resultBox = document.getElementById('create-user-result');
+      
+      resultBox.classList.remove('hidden');
+      resultBox.innerHTML = 'Connecting to write endpoint...';
+      
+      try {
+        const response = await fetch('/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, email })
+        });
+        
+        if (!response.ok) throw new Error('Failed to create user');
+        const user = await response.json();
+        
+        resultBox.innerHTML = \`✓ User Created (Primary DB Host):\\n\${JSON.stringify(user, null, 2)}\`;
+        
+        // Reset form
+        createUserForm.reset();
+        
+        // Refresh users list automatically
+        fetchUsers();
+      } catch (err) {
+        resultBox.innerHTML = \`✗ Error: \${err.message}\`;
+      }
+    });
+
+    // Fetch and render users list
+    async function fetchUsers() {
+      const listContainer = document.getElementById('users-list-container');
+      listContainer.innerHTML = '<div class="text-slate-600 text-center py-2 animate-pulse">querying replica...</div>';
+      
+      try {
+        const response = await fetch('/users');
+        if (!response.ok) throw new Error('Failed to query users');
+        const users = await response.json();
+        
+        if (users.length === 0) {
+          listContainer.innerHTML = '<div class="text-slate-500 italic text-center py-2">Database is empty.</div>';
+          return;
+        }
+        
+        listContainer.innerHTML = users.map(user => `
+          <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-950 border border-slate-900 hover:border-slate-800 transition-all">
+            <div>
+              <div class="text-slate-200 font-semibold">\${user.name}</div>
+              <div class="text-[10px] text-slate-500">\${user.email}</div>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono">ID: \${user.id}</span>
+          </div>
+        `).join('');
+      } catch (err) {
+        listContainer.innerHTML = \`<div class="text-rose-500 italic text-center py-2">Error: \${err.message}</div>\`;
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+services:
+  pg_primary:
+    image: postgres:16-alpine
+    container_name: pg_primary
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REPLICATION_USER: ${REPLICATION_USER}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pg_primary_data:/var/lib/postgresql/data
+      - ./docker/postgres/pg-replication-setup.sh:/docker-entrypoint-initdb.d/pg-replication-setup.sh:ro
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hydra_net
+
+  pg_replica:
+    image: postgres:16-alpine
+    container_name: pg_replica
+    environment:
+      PGDATA: /var/lib/postgresql/data
+      REPLICATION_USER: ${REPLICATION_USER}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pg_replica_data:/var/lib/postgresql/data
+      - ./docker/postgres/pg-replica-entrypoint.sh:/usr/local/bin/pg-replica-entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/pg-replica-entrypoint.sh"]
+    command: ["postgres"]
+    ports:
+      - "5435:5432"
+    depends_on:
+      pg_primary:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hydra_net
+
+  pgbouncer_primary:
+    image: edoburu/pgbouncer:latest
+    container_name: pgbouncer_primary
+    volumes:
+      - ./docker/pgbouncer/pgbouncer-primary.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./docker/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    depends_on:
+      pg_primary:
+        condition: service_healthy
+    networks:
+      - hydra_net
+
+  pgbouncer_replica:
+    image: edoburu/pgbouncer:latest
+    container_name: pgbouncer_replica
+    volumes:
+      - ./docker/pgbouncer/pgbouncer-replica.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./docker/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    depends_on:
+      pg_replica:
+        condition: service_healthy
+    networks:
+      - hydra_net
+
+  haproxy:
+    image: haproxy:2.8-alpine
+    container_name: haproxy
+    volumes:
+      - ./docker/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "5432:5432"
+      - "5433:5433"
+    depends_on:
+      - pgbouncer_primary
+      - pgbouncer_replica
+    networks:
+      - hydra_net
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nestjs_app
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: ${PORT}
+      DB_HOST: ${DB_HOST}
+      DB_PORT_WRITE: ${DB_PORT_WRITE}
+      DB_PORT_READ: ${DB_PORT_READ}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+    depends_on:
+      - haproxy
+    networks:
+      - hydra_net
+
+volumes:
+  pg_primary_data:
+  pg_replica_data:
+
+networks:
+  hydra_net:
+    driver: bridge
