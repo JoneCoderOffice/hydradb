@@ -25,19 +25,18 @@ services:
 
   pg_replica:
     image: postgres:16-alpine
-    container_name: pg_replica
     environment:
       PGDATA: /var/lib/postgresql/data
       REPLICATION_USER: ${REPLICATION_USER}
       REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - pg_replica_data:/var/lib/postgresql/data
+      - /var/lib/postgresql/data
       - ./docker/postgres/pg-replica-entrypoint.sh:/usr/local/bin/pg-replica-entrypoint.sh:ro
     entrypoint: ["/bin/sh", "/usr/local/bin/pg-replica-entrypoint.sh"]
     command: ["postgres"]
     ports:
-      - "5435:5432"
+      - "5435-5437:5432"
     depends_on:
       pg_primary:
         condition: service_healthy

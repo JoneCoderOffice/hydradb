@@ -264,17 +264,17 @@
         
         // Populate Primary Status
         document.getElementById('primary-details').innerHTML = `
-          <div><span class="text-slate-500">Instance Host:</span> <span class="text-indigo-400 font-semibold">\${data.writeConnection.description}</span></div>
-          <div><span class="text-slate-500">Exposed IP:</span> <span class="text-slate-200 font-mono">\${data.writeConnection.server_ip}</span></div>
-          <div><span class="text-slate-500">Logical Port:</span> <span class="text-slate-200 font-mono">\${data.writeConnection.port}</span></div>
+          <div><span class="text-slate-500">Instance Host:</span> <span class="text-indigo-400 font-semibold">${data.writeConnection.description}</span></div>
+          <div><span class="text-slate-500">Exposed IP:</span> <span class="text-slate-200 font-mono">${data.writeConnection.server_ip}</span></div>
+          <div><span class="text-slate-500">Logical Port:</span> <span class="text-slate-200 font-mono">${data.writeConnection.port}</span></div>
           <div><span class="text-slate-500">Replica Mode:</span> <span class="text-rose-400 font-semibold">false (Master Node)</span></div>
         `;
 
         // Populate Replica Status
         document.getElementById('replica-details').innerHTML = `
-          <div><span class="text-slate-500">Instance Host:</span> <span class="text-cyan-400 font-semibold">\${data.readConnection.description}</span></div>
-          <div><span class="text-slate-500">Exposed IP:</span> <span class="text-slate-200 font-mono">\${data.readConnection.server_ip}</span></div>
-          <div><span class="text-slate-500">Logical Port:</span> <span class="text-slate-200 font-mono">\${data.readConnection.port}</span></div>
+          <div><span class="text-slate-500">Instance Host:</span> <span class="text-cyan-400 font-semibold">${data.readConnection.description}</span></div>
+          <div><span class="text-slate-500">Exposed IP:</span> <span class="text-slate-200 font-mono">${data.readConnection.server_ip}</span></div>
+          <div><span class="text-slate-500">Logical Port:</span> <span class="text-slate-200 font-mono">${data.readConnection.port}</span></div>
           <div><span class="text-slate-500">Replica Mode:</span> <span class="text-emerald-400 font-semibold">true (Standby Mode)</span></div>
         `;
       } catch (err) {
@@ -307,7 +307,7 @@
         if (!response.ok) throw new Error('Failed to create user');
         const user = await response.json();
         
-        resultBox.innerHTML = \`✓ User Created (Primary DB Host):\\n\${JSON.stringify(user, null, 2)}\`;
+        resultBox.innerHTML = `✓ User Created (Primary DB Host):\n${JSON.stringify(user, null, 2)}`;
         
         // Reset form
         createUserForm.reset();
@@ -315,7 +315,7 @@
         // Refresh users list automatically
         fetchUsers();
       } catch (err) {
-        resultBox.innerHTML = \`✗ Error: \${err.message}\`;
+        resultBox.innerHTML = `✗ Error: ${err.message}`;
       }
     });
 
@@ -337,14 +337,14 @@
         listContainer.innerHTML = users.map(user => `
           <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-950 border border-slate-900 hover:border-slate-800 transition-all">
             <div>
-              <div class="text-slate-200 font-semibold">\${user.name}</div>
-              <div class="text-[10px] text-slate-500">\${user.email}</div>
+              <div class="text-slate-200 font-semibold">${user.name}</div>
+              <div class="text-[10px] text-slate-500">${user.email}</div>
             </div>
-            <span class="text-[10px] text-slate-500 font-mono">ID: \${user.id}</span>
+            <span class="text-[10px] text-slate-500 font-mono">ID: ${user.id}</span>
           </div>
         `).join('');
       } catch (err) {
-        listContainer.innerHTML = \`<div class="text-rose-500 italic text-center py-2">Error: \${err.message}</div>\`;
+        listContainer.innerHTML = `<div class="text-rose-500 italic text-center py-2">Error: ${err.message}</div>`;
       }
     }
   </script>
