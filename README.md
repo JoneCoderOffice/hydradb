@@ -42,7 +42,7 @@ yarn install
 ### 2. Startup Infrastructure
 Start all services in detached mode:
 ```bash
-docker compose up --build -d
+docker compose up --build -d --scale pg_replica=x
 ```
 This spins up:
 - PostgreSQL primary database (`pg_primary`)
