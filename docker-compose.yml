@@ -23,17 +23,12 @@ services:
       context: ./docker/postgres
       dockerfile: Dockerfile.patroni
     container_name: pg_primary
+    env_file:
+      - ./nestapp/.env
     environment:
       PATRONI_NAME: pg_primary
       PATRONI_RESTAPI_CONNECT_ADDRESS: pg_primary:8008
       PATRONI_POSTGRESQL_CONNECT_ADDRESS: pg_primary:5432
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      REPLICATION_USER: ${REPLICATION_USER}
-      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pg_primary_data:/var/lib/postgresql/data
       - ./docker/postgres/patroni.yml:/etc/patroni/patroni.yml:ro
@@ -53,14 +48,8 @@ services:
     build:
       context: ./docker/postgres
       dockerfile: Dockerfile.patroni
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      REPLICATION_USER: ${REPLICATION_USER}
-      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
+    env_file:
+      - ./nestapp/.env
     volumes:
       - /var/lib/postgresql/data
       - ./docker/postgres/patroni.yml:/etc/patroni/patroni.yml:ro
@@ -118,23 +107,32 @@ services:
 
   app:
     build:
-      context: .
+      context: ./nestapp
       dockerfile: Dockerfile
     container_name: nestjs_app
     ports:
       - "3000:3000"
-    environment:
-      PORT: ${PORT}
-      DB_HOST: ${DB_HOST}
-      DB_PORT_WRITE: ${DB_PORT_WRITE}
-      DB_PORT_READ: ${DB_PORT_READ}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
-      DB_DATABASE: ${DB_DATABASE}
+    env_file:
+      - ./nestapp/.env
     depends_on:
       - haproxy
     networks:
       - hydra_net
+
+  go_app:
+    build:
+      context: ./goapp
+      dockerfile: Dockerfile
+    container_name: go_app
+    ports:
+      - "8080:3000"
+    env_file:
+      - ./goapp/.env
+    depends_on:
+      - haproxy
+    networks:
+      - hydra_net
+
 
 volumes:
   pg_primary_data:

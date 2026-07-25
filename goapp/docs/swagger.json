@@ -1,0 +1,154 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "HydraDB Go - PostgreSQL Horizontal Scaling API",
+    "description": "REST API endpoints for the Go/Gin HydraDB project demonstrating GORM Primary/Replica connection routing, PgBouncer pooling, and HAProxy load balancing.",
+    "version": "1.0"
+  },
+  "tags": [
+    {
+      "name": "users",
+      "description": "User CRUD operations and database diagnostics"
+    }
+  ],
+  "paths": {
+    "/users": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Create a new user",
+        "description": "Inserts a new user record. This write operation is automatically routed to the Primary (Master) database instance (via HAProxy port 5432).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Alice Smith"
+                  },
+                  "email": {
+                    "type": "string",
+                    "example": "alice@example.com"
+                  }
+                },
+                "required": [
+                  "name",
+                  "email"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User record created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Retrieve users with pagination",
+        "description": "Queries user records with pagination. This read operation is automatically routed to the Replica (Slave) database instance (via HAProxy port 5433).",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number (default: 1)",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Number of items per page (default: 10)",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of users fetched from database.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/User"
+                      }
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "limit": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/db-info": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Get database connection routing details",
+        "description": "Queries both master and slave instances separately using independent query runners to verify IP addresses and standby/replica flags.",
+        "responses": {
+          "200": {
+            "description": "Database diagnostic details returned."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Alice Smith"
+          },
+          "email": {
+            "type": "string",
+            "example": "alice@example.com"
+          }
+        }
+      }
+    }
+  }
+}

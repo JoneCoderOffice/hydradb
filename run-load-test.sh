@@ -1,14 +1,15 @@
 #!/bin/bash
 
-# run-load-test.sh - Dynamic load test script for NestJS HA database cluster
-# Usage: ./run-load-test.sh [duration_seconds] [concurrency]
+# run-load-test.sh - Dynamic load test script for NestJS/Go HA database cluster
+# Usage: ./run-load-test.sh [duration_seconds] [concurrency] [port]
 
 DURATION=${1:-10}
 CONCURRENCY=${2:-100}
-URL="http://localhost:3000/users"
+PORT=${3:-3000}
+URL="http://localhost:$PORT/users"
 
 echo "=========================================================="
-echo " Starting Database Cluster Load Test (NestJS + Patroni)"
+echo " Starting Database Cluster Load Test (Port $PORT + Patroni)"
 echo " Duration: $DURATION seconds | Concurrency: $CONCURRENCY clients"
 echo "=========================================================="
 echo ""
