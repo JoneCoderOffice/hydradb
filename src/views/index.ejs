@@ -164,8 +164,14 @@
             </button>
           </div>
           <div class="w-full">
-            <div id="users-list-container" class="max-h-[160px] overflow-y-auto space-y-2 pr-1 font-mono text-xs">
+            <div id="users-list-container" class="max-h-[160px] overflow-y-auto space-y-2 pr-1 font-mono text-xs mb-3">
               <div class="text-slate-500 italic text-center text-xs py-4">No users queried yet.</div>
+            </div>
+            <!-- Pagination Controls -->
+            <div id="pagination-controls" class="hidden flex items-center justify-between mt-3 pt-3 border-t border-slate-800/80 text-[10px] text-slate-400 font-mono">
+              <button id="prev-page-btn" onclick="prevPage()" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-slate-800 text-slate-300 border border-slate-700/50 transition-all font-sans">&lt; Prev</button>
+              <span id="page-display">Page 1 of 1</span>
+              <button id="next-page-btn" onclick="nextPage()" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-slate-800 text-slate-300 border border-slate-700/50 transition-all font-sans">Next &gt;</button>
             </div>
           </div>
         </section>
@@ -319,20 +325,32 @@
       }
     });
 
+    let currentPage = 1;
+    const pageLimit = 10;
+    let totalPages = 1;
+
     // Fetch and render users list
-    async function fetchUsers() {
+    async function fetchUsers(page = 1) {
+      currentPage = page;
       const listContainer = document.getElementById('users-list-container');
+      const paginationControls = document.getElementById('pagination-controls');
       listContainer.innerHTML = '<div class="text-slate-600 text-center py-2 animate-pulse">querying replica...</div>';
       
       try {
-        const response = await fetch('/users');
+        const response = await fetch(`/users?page=${page}&limit=${pageLimit}`);
         if (!response.ok) throw new Error('Failed to query users');
-        const users = await response.json();
+        const res = await response.json();
         
-        if (users.length === 0) {
+        const users = res.data;
+        const total = res.total;
+        
+        if (!users || users.length === 0) {
           listContainer.innerHTML = '<div class="text-slate-500 italic text-center py-2">Database is empty.</div>';
+          paginationControls.classList.add('hidden');
           return;
         }
+        
+        totalPages = Math.ceil(total / pageLimit) || 1;
         
         listContainer.innerHTML = users.map(user => `
           <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-950 border border-slate-900 hover:border-slate-800 transition-all">
@@ -343,8 +361,27 @@
             <span class="text-[10px] text-slate-500 font-mono">ID: ${user.id}</span>
           </div>
         `).join('');
+
+        // Update pagination UI details
+        document.getElementById('page-display').textContent = `Page ${page} of ${totalPages} (Total: ${total})`;
+        document.getElementById('prev-page-btn').disabled = page <= 1;
+        document.getElementById('next-page-btn').disabled = page >= totalPages;
+        paginationControls.classList.remove('hidden');
       } catch (err) {
         listContainer.innerHTML = `<div class="text-rose-500 italic text-center py-2">Error: ${err.message}</div>`;
+        paginationControls.classList.add('hidden');
+      }
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        fetchUsers(currentPage - 1);
+      }
+    }
+
+    function nextPage() {
+      if (currentPage < totalPages) {
+        fetchUsers(currentPage + 1);
       }
     }
   </script>

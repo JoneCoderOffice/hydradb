@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './user.entity';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags('users')
 @Controller('users')
@@ -29,12 +29,19 @@ export class UsersController {
 
   @Get()
   @ApiOperation({
-    summary: 'Retrieve all users',
-    description: 'Queries user records. This read operation is automatically routed to the Replica (Slave) database instance (via HAProxy port 5433).',
+    summary: 'Retrieve users with pagination',
+    description: 'Queries user records with pagination. This read operation is automatically routed to the Replica (Slave) database instance (via HAProxy port 5433).',
   })
-  @ApiResponse({ status: 200, description: 'List of all users fetched from database.', type: [User] })
-  async findAll(): Promise<User[]> {
-    return this.usersService.findAll();
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default: 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Number of items per page (default: 10)' })
+  @ApiResponse({ status: 200, description: 'Paginated list of users fetched from database.' })
+  async findAll(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '10',
+  ): Promise<{ data: User[]; total: number; page: number; limit: number }> {
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    return this.usersService.findAll(pageNum, limitNum);
   }
 
   @Get('db-info')
