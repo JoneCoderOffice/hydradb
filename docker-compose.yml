@@ -99,6 +99,8 @@ services:
     ports:
       - "5432:5432"
       - "5433:5433"
+      - "3000:3000"
+      - "8080:8080"
     depends_on:
       - pgbouncer_primary
       - pgbouncer_replica
@@ -109,9 +111,6 @@ services:
     build:
       context: ./nestapp
       dockerfile: Dockerfile
-    container_name: nestjs_app
-    ports:
-      - "3000:3000"
     env_file:
       - ./nestapp/.env
     depends_on:
@@ -123,9 +122,6 @@ services:
     build:
       context: ./goapp
       dockerfile: Dockerfile
-    container_name: go_app
-    ports:
-      - "8080:3000"
     env_file:
       - ./goapp/.env
     depends_on:

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -99,10 +100,19 @@ func main() {
 	log.Printf("Connecting to Write Database: %s:%s", dbHost, dbPortWrite)
 	log.Printf("Connecting to Read Database: %s:%s", dbHost, dbPortRead)
 
-	// 3. Connect to Primary (Write) database
-	db, err := gorm.Open(postgres.Open(writeDSN), &gorm.Config{})
+	// 3. Connect to Primary (Write) database with retry logic
+	var db *gorm.DB
+	var err error
+	for i := 1; i <= 10; i++ {
+		db, err = gorm.Open(postgres.Open(writeDSN), &gorm.Config{})
+		if err == nil {
+			break
+		}
+		log.Printf("Failed to connect to database (attempt %d/10): %v. Retrying in 2 seconds...", i, err)
+		time.Sleep(2 * time.Second)
+	}
 	if err != nil {
-		log.Fatalf("Failed to connect to primary database: %v", err)
+		log.Fatalf("Failed to connect to primary database after retries: %v", err)
 	}
 
 	// 4. Configure GORM DBResolver to segregate reads to replicas (slaves)
@@ -122,6 +132,14 @@ func main() {
 	// 6. Set up Gin Engine
 	r := gin.Default()
 	r.Use(CORSMiddleware())
+	r.Use(func(c *gin.Context) {
+		hostname, err := os.Hostname()
+		if err != nil {
+			hostname = "unknown-go-host"
+		}
+		c.Writer.Header().Set("X-Handled-By", hostname)
+		c.Next()
+	})
 
 	// 7. Route Handlers
 

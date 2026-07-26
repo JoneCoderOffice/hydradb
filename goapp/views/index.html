@@ -86,6 +86,21 @@
           </button>
         </div>
 
+        <!-- App Instance Status -->
+        <div class="bg-slate-950/80 rounded-xl p-4 border border-slate-800/50 font-mono text-xs mb-4 flex justify-between items-center">
+          <div>
+            <span class="text-emerald-400 font-bold">APPLICATION LOAD BALANCING (HAProxy)</span>
+            <div class="text-slate-300 mt-2 flex items-center gap-2">
+              <span class="text-slate-500">Responding Instance Host:</span> 
+              <span class="text-cyan-400 font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-800" id="app-instance-host">Querying...</span>
+            </div>
+          </div>
+          <div class="flex flex-col items-end gap-1.5">
+            <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30">Active Scaled</span>
+            <span class="text-[9px] text-slate-500 font-sans">Round-Robin Routing</span>
+          </div>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Primary Node Status -->
           <div class="bg-slate-950/80 rounded-xl p-4 border border-slate-800/50 font-mono text-xs">
@@ -262,12 +277,17 @@
     async function refreshDiagnostics() {
       // Set loaders
       document.querySelectorAll('.loading').forEach(el => el.innerHTML = '<span class="text-slate-600 animate-pulse">querying...</span>');
+      document.getElementById('app-instance-host').innerHTML = '<span class="text-slate-600 animate-pulse">querying...</span>';
       
       try {
         const response = await fetch('/users/db-info');
         if (!response.ok) throw new Error('API query failure');
         const data = await response.json();
         
+        // Display responding instance from custom response header
+        const handledBy = response.headers.get('X-Handled-By') || 'unknown-host';
+        document.getElementById('app-instance-host').innerText = handledBy;
+
         // Populate Primary Status
         document.getElementById('primary-details').innerHTML = `
           <div><span class="text-slate-500">Instance Host:</span> <span class="text-indigo-400 font-semibold">${data.writeConnection.description}</span></div>
@@ -286,6 +306,7 @@
       } catch (err) {
         console.error(err);
         document.querySelectorAll('.loading').forEach(el => el.innerHTML = '<span class="text-rose-500 font-semibold">error</span>');
+        document.getElementById('app-instance-host').innerHTML = '<span class="text-rose-500 font-semibold">error</span>';
       }
     }
 
@@ -312,8 +333,9 @@
         
         if (!response.ok) throw new Error('Failed to create user');
         const user = await response.json();
+        const handledBy = response.headers.get('X-Handled-By') || 'unknown-host';
         
-        resultBox.innerHTML = `✓ User Created (Primary DB Host):\n${JSON.stringify(user, null, 2)}`;
+        resultBox.innerHTML = `✓ User Created (Primary DB Host) via [${handledBy}]:\n${JSON.stringify(user, null, 2)}`;
         
         // Reset form
         createUserForm.reset();
@@ -340,6 +362,7 @@
         const response = await fetch(`/users?page=${page}&limit=${pageLimit}`);
         if (!response.ok) throw new Error('Failed to query users');
         const res = await response.json();
+        const handledBy = response.headers.get('X-Handled-By') || 'unknown-host';
         
         const users = res.data;
         const total = res.total;
@@ -363,7 +386,7 @@
         `).join('');
 
         // Update pagination UI details
-        document.getElementById('page-display').textContent = `Page ${page} of ${totalPages} (Total: ${total})`;
+        document.getElementById('page-display').textContent = `Page ${page} of ${totalPages} (Total: ${total}) [Served by: ${handledBy}]`;
         document.getElementById('prev-page-btn').disabled = page <= 1;
         document.getElementById('next-page-btn').disabled = page >= totalPages;
         paginationControls.classList.remove('hidden');

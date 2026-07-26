@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import * as os from 'os';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -10,6 +11,13 @@ async function bootstrap() {
   // Configure template engine (EJS) and base views directory
   app.setBaseViewsDir(join(__dirname, 'views'));
   app.setViewEngine('ejs');
+
+  // Set up global middleware for X-Handled-By header
+  const hostname = os.hostname();
+  app.use((req, res, next) => {
+    res.setHeader('X-Handled-By', hostname);
+    next();
+  });
 
   const config = new DocumentBuilder()
     .setTitle('HydraDB - PostgreSQL Horizontal Scaling API')
