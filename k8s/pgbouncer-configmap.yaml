@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgbouncer-config
+data:
+  pgbouncer-primary.ini: |
+    [databases]
+    hydra_db = host=haproxy port=5000 auth_user=postgres
+    
+    [pgbouncer]
+    listen_port = 6432
+    listen_addr = *
+    auth_type = scram-sha-256
+    auth_file = /etc/pgbouncer/userlist.txt
+    admin_users = postgres,hydra_user
+    pool_mode = transaction
+    max_client_conn = 100
+    default_pool_size = 20
+    log_connections = 1
+    log_disconnections = 1
+    log_pooler_errors = 1
+  pgbouncer-replica.ini: |
+    [databases]
+    hydra_db = host=haproxy port=5001 auth_user=postgres
+    
+    [pgbouncer]
+    listen_port = 6432
+    listen_addr = *
+    auth_type = scram-sha-256
+    auth_file = /etc/pgbouncer/userlist.txt
+    admin_users = postgres,hydra_user
+    pool_mode = transaction
+    max_client_conn = 100
+    default_pool_size = 20
+    log_connections = 1
+    log_disconnections = 1
+    log_pooler_errors = 1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgbouncer-userlist
+data:
+  userlist.txt: |
+    "postgres" "postgres_admin_pwd"
+    "hydra_user" "hydra_pwd"

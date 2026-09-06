@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer-replica
+  labels:
+    app: pgbouncer-replica
+spec:
+  ports:
+  - port: 6432
+    targetPort: 6432
+  selector:
+    app: pgbouncer-replica
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer-replica
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgbouncer-replica
+  template:
+    metadata:
+      labels:
+        app: pgbouncer-replica
+    spec:
+      containers:
+      - name: pgbouncer
+        image: edoburu/pgbouncer:latest
+        ports:
+        - containerPort: 6432
+        volumeMounts:
+        - name: config
+          mountPath: /etc/pgbouncer/pgbouncer.ini
+          subPath: pgbouncer-replica.ini
+        - name: userlist
+          mountPath: /etc/pgbouncer/userlist.txt
+          subPath: userlist.txt
+      volumes:
+      - name: config
+        configMap:
+          name: pgbouncer-config
+      - name: userlist
+        configMap:
+          name: pgbouncer-userlist

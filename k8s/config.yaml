@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hydra-config
+data:
+  DB_HOST: "haproxy"
+  DB_PORT_WRITE: "5432"
+  DB_PORT_READ: "5433"
+  DB_DATABASE: "hydra_db"
+  POSTGRES_DB: "hydra_db"
+  PATRONI_NAME_PRIMARY: "pg-primary"
+  PATRONI_NAME_REPLICA: "pg-replica"
+  PATRONI_RESTAPI_CONNECT_ADDRESS_PRIMARY: "pg-primary:8008"
+  PATRONI_POSTGRESQL_CONNECT_ADDRESS_PRIMARY: "pg-primary:5432"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hydra-secrets
+type: Opaque
+stringData:
+  DB_USERNAME: "hydra_user"
+  DB_PASSWORD: "hydra_pwd"
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "postgres_admin_pwd"
+  REPLICATION_USER: "replica_user"
+  REPLICATION_PASSWORD: "replica_pwd"

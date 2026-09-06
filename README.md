@@ -28,6 +28,7 @@ hydradb/
 │   ├── haproxy/          # HAProxy Port Load Balancers Config
 │   ├── pgbouncer/        # Connection Poolers Config
 │   └── postgres/         # Patroni/Postgres Replica Templates
+├── k8s/                  # Kubernetes Deployment & Auto-Scaling Manifests
 ├── nestapp/              # NestJS Application (Port 3000)
 │   ├── src/              # TypeORM Models, Controllers & Services
 │   ├── test/             # e2e Testing Packages
@@ -68,12 +69,14 @@ hydradb/
 
 ## 🚀 Setup & Execution
 
-### Prerequisites
+### Option A: Docker Compose (Local Development)
+
+#### Prerequisites
 - Docker Desktop / Daemon running
 - Go (optional, for local development under `goapp/`)
 - Node.js & Yarn (optional, for local development under `nestapp/`)
 
-### 1. Startup Cluster
+#### 1. Startup Cluster
 Start all services in detached mode:
 ```bash
 docker compose up --build -d
@@ -89,6 +92,41 @@ This spins up:
 - Go Gin application (`go_app`) on port `8080`
 
 Connected together through a custom bridge network `hydra_net`.
+
+### Option B: Kubernetes via Minikube (Auto-Scaling Setup)
+
+#### Prerequisites
+- Minikube and `kubectl` installed.
+
+#### 1. Start Minikube & Enable Addons
+Enable the `ingress` and `metrics-server` (required for HPA) addons:
+```bash
+minikube start
+minikube addons enable ingress
+minikube addons enable metrics-server
+```
+
+#### 2. Build Images inside Minikube
+Point your terminal to use Minikube's Docker daemon, then build the images:
+```bash
+eval $(minikube docker-env)
+
+# Build PostgreSQL
+docker build -t hydradb-postgres:latest -f docker/postgres/Dockerfile.patroni docker/postgres
+
+# Build Nest App
+docker build -t hydradb-nestapp:latest -f nestapp/Dockerfile nestapp
+
+# Build Go App
+docker build -t hydradb-goapp:latest -f goapp/Dockerfile goapp
+```
+
+#### 3. Deploy to Kubernetes
+Apply all the manifests:
+```bash
+kubectl apply -f k8s/
+```
+You can access the applications via the Ingress controller using the Minikube IP (`minikube ip`) at paths `/nest` and `/go`.
 
 ---
 
@@ -146,14 +184,17 @@ Both services expose identical APIs:
 
 ## 📊 Benchmarking & Load Testing
 
-The included `run-load-test.sh` script tests read and write throughput using `autocannon`. You can target either port:
+The included `run-load-test.sh` script tests read and write throughput using `autocannon`. It accepts a target URL, allowing you to test via localhost (Docker Compose) or via the Ingress controller (Kubernetes).
 
 ```bash
 chmod +x run-load-test.sh
 
-# Load test NestJS (Port 3000)
-./run-load-test.sh 10 100 3000
+# Option A: Load test Docker Compose (localhost)
+./run-load-test.sh 10 100 http://localhost:3000/users   # NestJS
+./run-load-test.sh 10 100 http://localhost:8080/users   # Go Gin
 
-# Load test Go Gin (Port 8080)
-./run-load-test.sh 10 100 8080
+# Option B: Load test Kubernetes via Minikube
+export MINIKUBE_IP=$(minikube ip)
+./run-load-test.sh 10 100 http://$MINIKUBE_IP/nest/users   # NestJS
+./run-load-test.sh 10 100 http://$MINIKUBE_IP/go/users     # Go Gin
 ```

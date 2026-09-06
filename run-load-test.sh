@@ -5,11 +5,11 @@
 
 DURATION=${1:-10}
 CONCURRENCY=${2:-100}
-PORT=${3:-3000}
-URL="http://localhost:$PORT/users"
+URL=${3:-"http://localhost:3000/users"}
 
 echo "=========================================================="
-echo " Starting Database Cluster Load Test (Port $PORT + Patroni)"
+echo " Starting Database Cluster Load Test"
+echo " Target URL: $URL"
 echo " Duration: $DURATION seconds | Concurrency: $CONCURRENCY clients"
 echo "=========================================================="
 echo ""

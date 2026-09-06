@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pg-replica
+  labels:
+    app: pg-replica
+spec:
+  ports:
+  - port: 5432
+    name: postgres
+  - port: 8008
+    name: restapi
+  selector:
+    app: pg-replica
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pg-replica
+spec:
+  serviceName: pg-replica
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pg-replica
+  template:
+    metadata:
+      labels:
+        app: pg-replica
+    spec:
+      containers:
+      - name: postgres
+        image: hydradb-postgres:latest
+        imagePullPolicy: Never
+        env:
+        - name: PATRONI_NAME
+          value: "pg-replica"
+        - name: PATRONI_RESTAPI_CONNECT_ADDRESS
+          value: "pg-replica:8008"
+        - name: PATRONI_POSTGRESQL_CONNECT_ADDRESS
+          valueFrom:
+            configMapKeyRef:
+              name: hydra-config
+              key: PATRONI_POSTGRESQL_CONNECT_ADDRESS_REPLICA
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: hydra-secrets
+              key: DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hydra-secrets
+              key: DB_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: hydra-config
+              key: POSTGRES_DB
+        ports:
+        - containerPort: 5432
+        - containerPort: 8008
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+        - name: config
+          mountPath: /etc/patroni/patroni.yml
+          subPath: patroni.yml
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: patroni-config
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
