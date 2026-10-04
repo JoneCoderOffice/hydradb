@@ -98,35 +98,56 @@ Connected together through a custom bridge network `hydra_net`.
 #### Prerequisites
 - Minikube and `kubectl` installed.
 
-#### 1. Start Minikube & Enable Addons
+#### Quick Automated Setup
+Run the automated deployment script:
+```bash
+./deploy-minikube.sh
+```
+
+#### Manual Step-by-Step Setup
+
+##### 1. Start Minikube & Enable Addons
 Enable the `ingress` and `metrics-server` (required for HPA) addons:
 ```bash
-minikube start
+minikube start --cpus=4 --memory=4096
 minikube addons enable ingress
 minikube addons enable metrics-server
 ```
 
-#### 2. Build Images inside Minikube
-Point your terminal to use Minikube's Docker daemon, then build the images:
+##### 2. Build Images inside Minikube
+Build images directly into Minikube (no host Docker daemon required):
 ```bash
-eval $(minikube docker-env)
-
-# Build PostgreSQL
-docker build -t hydradb-postgres:latest -f docker/postgres/Dockerfile.patroni docker/postgres
+# Build PostgreSQL (Patroni)
+minikube image build -t hydradb-postgres:latest -f docker/postgres/Dockerfile.patroni docker/postgres
 
 # Build Nest App
-docker build -t hydradb-nestapp:latest -f nestapp/Dockerfile nestapp
+minikube image build -t hydradb-nestapp:latest -f nestapp/Dockerfile nestapp
 
 # Build Go App
-docker build -t hydradb-goapp:latest -f goapp/Dockerfile goapp
+minikube image build -t hydradb-goapp:latest -f goapp/Dockerfile goapp
 ```
+*(Alternatively, run `eval $(minikube docker-env)` and use `docker build ...`)*
 
-#### 3. Deploy to Kubernetes
-Apply all the manifests:
+##### 3. Deploy to Kubernetes
+Apply all manifests:
 ```bash
 kubectl apply -f k8s/
 ```
-You can access the applications via the Ingress controller using the Minikube IP (`minikube ip`) at paths `/nest` and `/go`.
+
+##### 4. Accessing Services (macOS note)
+On macOS (Docker driver), `minikube ip` requires a network route. In a separate terminal, run:
+```bash
+minikube tunnel
+```
+Once `minikube tunnel` is running (or on Linux directly), access applications via Ingress at:
+- NestJS API: `http://localhost/nest` (or `http://$(minikube ip)/nest`)
+- Go Gin API: `http://localhost/go` (or `http://$(minikube ip)/go`)
+
+Alternatively, you can port-forward directly:
+```bash
+kubectl port-forward svc/nestapp 3000:3000
+kubectl port-forward svc/goapp 8080:8080
+```
 
 ---
 

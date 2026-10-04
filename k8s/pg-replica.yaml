@@ -5,6 +5,7 @@ metadata:
   labels:
     app: pg-replica
 spec:
+  publishNotReadyAddresses: true
   ports:
   - port: 5432
     name: postgres
@@ -34,9 +35,15 @@ spec:
         imagePullPolicy: Never
         env:
         - name: PATRONI_NAME
-          value: "pg-replica"
+          valueFrom:
+            configMapKeyRef:
+              name: hydra-config
+              key: PATRONI_NAME_REPLICA
         - name: PATRONI_RESTAPI_CONNECT_ADDRESS
-          value: "pg-replica:8008"
+          valueFrom:
+            configMapKeyRef:
+              name: hydra-config
+              key: PATRONI_RESTAPI_CONNECT_ADDRESS_REPLICA
         - name: PATRONI_POSTGRESQL_CONNECT_ADDRESS
           valueFrom:
             configMapKeyRef:
@@ -60,6 +67,18 @@ spec:
         ports:
         - containerPort: 5432
         - containerPort: 8008
+        readinessProbe:
+          httpGet:
+            path: /read-only
+            port: 8008
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8008
+          initialDelaySeconds: 20
+          periodSeconds: 10
         volumeMounts:
         - name: data
           mountPath: /var/lib/postgresql/data

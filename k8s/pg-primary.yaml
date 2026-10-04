@@ -41,7 +41,7 @@ data:
     postgresql:
       listen: 0.0.0.0:5432
       connect_address: localhost:5432
-      data_dir: /var/lib/postgresql/data
+      data_dir: /var/lib/postgresql/data/pgdata
       bin_dir: /usr/local/bin
       pgpass: /var/lib/postgresql/.pgpass
       authentication:
@@ -63,6 +63,7 @@ metadata:
   labels:
     app: pg-primary
 spec:
+  publishNotReadyAddresses: true
   ports:
   - port: 5432
     name: postgres
@@ -124,6 +125,18 @@ spec:
         ports:
         - containerPort: 5432
         - containerPort: 8008
+        readinessProbe:
+          httpGet:
+            path: /read-only
+            port: 8008
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8008
+          initialDelaySeconds: 20
+          periodSeconds: 10
         volumeMounts:
         - name: data
           mountPath: /var/lib/postgresql/data

@@ -30,6 +30,16 @@ spec:
         image: edoburu/pgbouncer:latest
         ports:
         - containerPort: 6432
+        readinessProbe:
+          tcpSocket:
+            port: 6432
+          initialDelaySeconds: 3
+          periodSeconds: 5
+        livenessProbe:
+          tcpSocket:
+            port: 6432
+          initialDelaySeconds: 5
+          periodSeconds: 10
         volumeMounts:
         - name: config
           mountPath: /etc/pgbouncer/pgbouncer.ini

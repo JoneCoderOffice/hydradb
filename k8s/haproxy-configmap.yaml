@@ -6,26 +6,27 @@ data:
   haproxy.cfg: |
     global
         log stdout format raw local0
+        stats socket /tmp/haproxy.sock mode 660 level admin
     
     defaults
         log     global
         mode    tcp
+        option  tcplog
         timeout connect 5s
         timeout client  30m
         timeout server  30m
 
     resolvers k8s
         parse-resolv-conf
-        accepted_payload_size 8192
         resolve_retries 3
         timeout resolve 1s
         timeout retry 1s
-        hold other 30s
-        hold refused 30s
-        hold nx 30s
-        hold timeout 30s
-        hold valid 10s
-        hold obsolete 30s
+        hold other 10s
+        hold refused 10s
+        hold nx 10s
+        hold timeout 10s
+        hold valid 5s
+        hold obsolete 10s
     
     # External entrypoint for NestJS writes
     frontend postgres_write_front
@@ -33,7 +34,8 @@ data:
         default_backend postgres_write_back
     
     backend postgres_write_back
-        server pgbouncer_primary_srv pgbouncer-primary:6432 check
+        default-server init-addr last,libc,none
+        server pgbouncer_primary_srv pgbouncer-primary.default.svc.cluster.local:6432 check resolvers k8s resolve-prefer ipv4
     
     # External entrypoint for NestJS reads
     frontend postgres_read_front
@@ -41,7 +43,8 @@ data:
         default_backend postgres_read_back
     
     backend postgres_read_back
-        server pgbouncer_replica_srv pgbouncer-replica:6432 check
+        default-server init-addr last,libc,none
+        server pgbouncer_replica_srv pgbouncer-replica.default.svc.cluster.local:6432 check resolvers k8s resolve-prefer ipv4
     
     # Internal dynamic routing for Primary Database (Writes)
     frontend patroni_primary_front
@@ -51,9 +54,9 @@ data:
     backend patroni_primary_back
         option httpchk GET /primary
         http-check expect status 200
-        default-server inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
-        server pg-primary pg-primary:5432 check port 8008 resolvers k8s resolve-prefer ipv4
-        server-template pg-replica-template 1-3 pg-replica:5432 check port 8008 resolvers k8s resolve-prefer ipv4
+        default-server init-addr last,libc,none inter 3s fall 3 rise 2 on-marked-down shutdown-sessions
+        server pg-primary pg-primary.default.svc.cluster.local:5432 check port 8008 resolvers k8s resolve-prefer ipv4
+        server pg-replica pg-replica.default.svc.cluster.local:5432 check port 8008 resolvers k8s resolve-prefer ipv4
     
     # Internal dynamic routing for Replica Databases (Reads)
     frontend patroni_replica_front
@@ -64,9 +67,9 @@ data:
         balance roundrobin
         option httpchk GET /replica
         http-check expect status 200
-        default-server inter 3s fall 3 rise 2
-        server pg-primary pg-primary:5432 check port 8008
-        server-template pg-replica-template 1-10 pg-replica:5432 check port 8008
+        default-server init-addr last,libc,none inter 3s fall 3 rise 2
+        server pg-primary pg-primary.default.svc.cluster.local:5432 check port 8008 resolvers k8s resolve-prefer ipv4
+        server pg-replica pg-replica.default.svc.cluster.local:5432 check port 8008 resolvers k8s resolve-prefer ipv4
     
     # NestJS HTTP Application Load Balancer
     frontend nest_app_front
@@ -77,7 +80,8 @@ data:
     backend nest_app_back
         mode http
         balance roundrobin
-        server-template nest_app_template 1-10 nestapp:3000 check
+        default-server init-addr last,libc,none
+        server-template nest_app_template 1-10 nestapp.default.svc.cluster.local:3000 check resolvers k8s resolve-prefer ipv4
     
     # Go Gin HTTP Application Load Balancer
     frontend go_app_front
@@ -88,4 +92,5 @@ data:
     backend go_app_back
         mode http
         balance roundrobin
-        server-template go_app_template 1-10 goapp:8080 check
+        default-server init-addr last,libc,none
+        server-template go_app_template 1-10 goapp.default.svc.cluster.local:8080 check resolvers k8s resolve-prefer ipv4
