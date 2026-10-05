@@ -26,8 +26,8 @@ bootstrap:
         hot_standby: "on"
         hot_standby_feedback: "on"
       pg_hba:
-        - host replication replica_user 0.0.0.0/0 md5
-        - host all all 0.0.0.0/0 md5
+        - host replication replica_user 0.0.0.0/0 scram-sha-256
+        - host all all 0.0.0.0/0 scram-sha-256
         - local all all trust
   init:
     post_bootstrap: /usr/local/bin/post_bootstrap.sh
@@ -35,7 +35,7 @@ bootstrap:
 postgresql:
   listen: 0.0.0.0:5432
   connect_address: localhost:5432
-  data_dir: /var/lib/postgresql/data
+  data_dir: /var/lib/postgresql/data/pgdata
   bin_dir: /usr/local/bin
   pgpass: /var/lib/postgresql/.pgpass
   authentication:
@@ -46,6 +46,6 @@ postgresql:
       username: postgres
       password: postgres_admin_pwd
   pg_hba:
-    - host replication replica_user 0.0.0.0/0 md5
-    - host all all 0.0.0.0/0 md5
+    - host replication replica_user 0.0.0.0/0 scram-sha-256
+    - host all all 0.0.0.0/0 scram-sha-256
     - local all all trust

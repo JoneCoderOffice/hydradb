@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer-primary
+  labels:
+    app: pgbouncer-primary
+spec:
+  ports:
+  - port: 6432
+    targetPort: 6432
+  selector:
+    app: pgbouncer-primary
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer-primary
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgbouncer-primary
+  template:
+    metadata:
+      labels:
+        app: pgbouncer-primary
+    spec:
+      containers:
+      - name: pgbouncer
+        image: edoburu/pgbouncer:latest
+        ports:
+        - containerPort: 6432
+        readinessProbe:
+          tcpSocket:
+            port: 6432
+          initialDelaySeconds: 3
+          periodSeconds: 5
+        livenessProbe:
+          tcpSocket:
+            port: 6432
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        volumeMounts:
+        - name: config
+          mountPath: /etc/pgbouncer/pgbouncer.ini
+          subPath: pgbouncer-primary.ini
+        - name: userlist
+          mountPath: /etc/pgbouncer/userlist.txt
+          subPath: userlist.txt
+      volumes:
+      - name: config
+        configMap:
+          name: pgbouncer-config
+      - name: userlist
+        configMap:
+          name: pgbouncer-userlist

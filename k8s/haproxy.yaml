@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: haproxy
+  labels:
+    app: haproxy
+spec:
+  ports:
+  - name: pg-write
+    port: 5432
+    targetPort: 5432
+  - name: pg-read
+    port: 5433
+    targetPort: 5433
+  - name: patroni-primary
+    port: 5000
+    targetPort: 5000
+  - name: patroni-replica
+    port: 5001
+    targetPort: 5001
+  - name: nestapp
+    port: 3000
+    targetPort: 3000
+  - name: goapp
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: haproxy
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: haproxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: haproxy
+  template:
+    metadata:
+      labels:
+        app: haproxy
+    spec:
+      containers:
+      - name: haproxy
+        image: haproxy:2.8-alpine
+        ports:
+        - containerPort: 5432
+        - containerPort: 5433
+        - containerPort: 5000
+        - containerPort: 5001
+        - containerPort: 3000
+        - containerPort: 8080
+        readinessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 3
+          periodSeconds: 5
+        livenessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        volumeMounts:
+        - name: haproxy-config
+          mountPath: /usr/local/etc/haproxy/haproxy.cfg
+          subPath: haproxy.cfg
+      volumes:
+      - name: haproxy-config
+        configMap:
+          name: haproxy-configmap
